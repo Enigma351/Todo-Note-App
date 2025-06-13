@@ -1,6 +1,7 @@
 import express from 'express';
 import dotenv from 'dotenv';
-import cors from 'cors'
+import cors from 'cors';
+import path from 'path';
 
 import notesRoutes from './Routes/notesRoutes.js';
 import { connectDB } from './config/db.js';
@@ -8,29 +9,34 @@ import rateLimiter from './middleware/rateLimiter.js';
 
 dotenv.config();
 
-const port = process.env.PORT || 3000;
-
 const app = express();
+const port = process.env.PORT || 3000;
+const __dirname = path.resolve()
+
 
 // middleware
-app.use(cors({
-  origin: "http://localhost:5173",
-}))
+if(process.env.NODE_ENV !== 'production') {
+  app.use(
+    cors({
+      origin: 'http://localhost:5173',
+    })
+  );
+}
 app.use(express.json());
 app.use(rateLimiter);
 
-// app.use((req, _, next) => {
-//   console.log(`Req method is ${req.method} and Req url is ${req.url}`);
-//   next();
-// });
-
 app.use('/api/notes', notesRoutes);
 
+if (process.env.NODE_ENV === 'production') {
+  app.use(express.static(path.join(__dirname, '../frontend/dist')));
+
+  app.get('*', (req, res) => {
+    res.sendFile(path.join(__dirname, '../frontend', 'dist', 'index.html'));
+  });
+}
 
 connectDB().then(() => {
   app.listen(port, () => {
     console.log(`Server started on port: ${port}`);
   });
 });
-
-// mongodb+srv://senpartho15:<db_password>@cluster0.s3hkfob.mongodb.net/?retryWrites=true&w=majority&appName=Cluster0
